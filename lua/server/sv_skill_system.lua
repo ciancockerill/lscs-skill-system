@@ -3,7 +3,6 @@ include("server/sv_skill_data.lua")
 hook.Add("PlayerInitialSpawn", "InitSkillSystem", function(ply)
     timer.Simple(0.5, function() -- Error w/ P2P servers, loading in too quick before table inits
         local skillSystem = LSCS_SKILLSYSTEM:New(ply)
-        PrintTable(LSCS_SKILLSYSTEM)
         skillSystem:LoadPlayerData(ply)
     end)
 end)
@@ -24,9 +23,9 @@ concommand.Add("lscs_levelmeup", function(ply, cmd, args)
     ply.SkillSystem:LevelUp()
 end)
 
-function LSCS_SKILLSYSTEM:GetXPToNextLevel(level)
-    return math.floor(self.BASE_XP * (level ^ self.XP_MULT))
-end
+concommand.Add("lscs_loadtrees", function(ply,cmd,args)
+    LSCS_SKILLTREE.LoadSkillTreesFromFile()
+end)
 
 function LSCS_SKILLSYSTEM:LevelUp()
     while(true) do
@@ -43,16 +42,6 @@ function LSCS_SKILLSYSTEM:LevelUp()
         self.XP = xpDifference
         self.Level = self.Level + 1
         self.SkillPoints = self.SkillPoints + 1
-        print(self.Player:Nick().." Levelled up to Level ".. self.Level)
+        print(self.Player:Nick().." Leveled up to Level ".. self.Level)
     end
-end
-
-function LSCS_SKILLSYSTEM:GetPlayerData()
-    return {
-        self.Level or 1,
-        self.XP or 0,
-        self.Stances or {},
-        self.Skills or {},
-        self.SkillPoints or 0
-    }
 end
