@@ -1,8 +1,3 @@
-net.Receive("LSCS_SendSkillDataToClient", function()
-    local skillData = net.ReadTable()
-    LocalPlayer().SkillSystem = skillData
-end)
-
 function LSCS_SKILLSYSTEM:getDataOnClient()
     net.Start("LSCS_RequestSkillDataFromServer")
     net.SendToServer()
@@ -25,7 +20,9 @@ function LSCS_SKILLSYSTEM:GetAllSkillTreeNames()
     net.SendToServer()
 end
 
-net.Receive("LSCS_SendAllSkillTreeNamesToClient", function()
-    local skilltreeNames = net.ReadTable()
-    LSCS_SKILLTREE.TreeNames = skilltreeNames
+net.Receive("LSCS_SendLevelUpNotificationToClient", function(ply, len)
+    local level = net.ReadUInt(LEVEL_BIT_COUNT)
+    local time = net.ReadUInt(COOLDOWN_BIT_COUNT)
+
+    SpawnLevelUpNotification(level, time)
 end)

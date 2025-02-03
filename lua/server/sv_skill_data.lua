@@ -18,11 +18,10 @@ function LSCS_SKILLSYSTEM:SavePlayerData()
     local fileName = SAVEDATA_DIR.."/"..self.Player:SteamID64()..".json"
 
     local data = {
-        Level = self.Level,
-        XP = self.XP,
-        SkillPoints = self.SkillPoints,
-        Skills = self.Skills,
-        Stances = self.Stances
+        Level = self.Level or 1,
+        XP = self.XP or 0,
+        SkillPoints = self.SkillPoints or 0,
+        Nodes = self.Nodes or {}
     }
 
     file.Write(fileName, util.TableToJSON(data))
@@ -40,8 +39,7 @@ function LSCS_SKILLSYSTEM:LoadPlayerData(ply)
         skillSystem.Level = data.Level 
         skillSystem.XP = data.XP
         skillSystem.SkillPoints = data.SkillPoints
-        skillSystem.Skills = data.Skills
-        skillSystem.Stances = data.Stances
+        skillSystem.Nodes = data.Nodes
         
         ply.SkillSystem = skillSystem
         print("Loaded Data: ".. ply:Nick())

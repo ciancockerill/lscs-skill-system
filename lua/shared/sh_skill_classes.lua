@@ -13,9 +13,8 @@ function LSCS_SKILLSYSTEM:New(ply)
         Player = ply,
         XP = 0,
         Level = 1,
-        SkillsPoints = 0,
-        Skills = {},
-        Stances = {}
+        SkillPoints = 0,
+        Nodes = {}
     }
     setmetatable(obj, LSCS_SKILLSYSTEM)
     return obj
@@ -81,6 +80,7 @@ LSCS_SKILLTREE.__index = LSCS_SKILLTREE
 function LSCS_SKILLTREE:New(name)
     local obj = {
         Name = name,
+        Roots = {},
         Nodes = {}
     }
     setmetatable(obj, LSCS_SKILLTREE)
@@ -88,5 +88,10 @@ function LSCS_SKILLTREE:New(name)
 end
 
 function LSCS_SKILLTREE:AddNode(node)
+    self.Nodes[node.Name] = node
+end
+
+function LSCS_SKILLTREE:AddRoot(node)
+    table.insert(self.Roots, node)
     self.Nodes[node.Name] = node
 end

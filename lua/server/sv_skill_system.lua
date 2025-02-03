@@ -28,9 +28,9 @@ concommand.Add("lscs_loadtrees", function(ply,cmd,args)
 end)
 
 function LSCS_SKILLSYSTEM:LevelUp()
-    while(true) do
-        if self.Level >= LSCS_SKILLSYSTEM.MAX_LEVEL then return end
+    if self.Level >= LSCS_SKILLSYSTEM.MAX_LEVEL then return end
 
+    while(true) do
         local currLvl = self.Level
         local xpToNextLevel = self:GetXPToNextLevel(currLvl + 1)
         local xpDifference = self.XP - xpToNextLevel
@@ -42,6 +42,31 @@ function LSCS_SKILLSYSTEM:LevelUp()
         self.XP = xpDifference
         self.Level = self.Level + 1
         self.SkillPoints = self.SkillPoints + 1
-        print(self.Player:Nick().." Leveled up to Level ".. self.Level)
+
+        net.Start("LSCS_SendLevelUpNotificationToClient")
+            net.WriteUInt(currLvl, LEVEL_BIT_COUNT) -- Level
+            net.WriteUInt(8, COOLDOWN_BIT_COUNT) -- Time for noti
+        net.Send(self.Player)
     end
 end
+
+function LSCS_SKILLSYSTEM:AddXP(xp)
+    if self == nil then return end
+
+    self.XP = self.XP + xp
+    self:LevelUp()
+    self:SavePlayerData()
+end
+
+hook.Add( "OnNPCKilled", "LSCS_GivePlayerXPonNPCKill", function(npc, attacker,inflictor )
+    if (attacker:IsPlayer()) then
+        attacker.SkillSystem:AddXP(100)
+    end
+end)
+
+hook.Add( "PlayerDeath", "LSCS_GivePlayerXPonPlayerKill", function( victim, inflictor, attacker )
+    if (attacker:IsPlayer() and victim != attacker) then
+        attacker.SkillSystem:AddXP(100)
+    end
+end )
+

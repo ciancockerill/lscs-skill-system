@@ -18,7 +18,7 @@ frostGuardian:AddPrerequisite("Earthquake")
 stormCaller:AddPrerequisite("Earthquake")
 earthWarden:AddPrerequisite("Storm Caller")
 
-skillTree:AddNode(fireball)
+skillTree:AddRoot(fireball)
 skillTree:AddNode(frostShield)
 skillTree:AddNode(lightningStrike)
 skillTree:AddNode(earthQuake)

@@ -44,7 +44,38 @@ LSCS_SKILLSTATION.Colour = {
     HoverHL = Color(50,50,102)
 }
 
+LSCS_SKILLSTATION.CurrSelectIndex = 1
+
+function LSCS_SKILLSTATION:LoadPData() 
+    local dataLoaded = false
+    local treesLoaded = false
+
+    net.Receive("LSCS_SendSkillDataToClient", function()
+        local skillData = net.ReadTable()
+        LocalPlayer().SkillSystem = skillData
+        dataLoaded = true
+        if dataLoaded and treesLoaded then
+            hook.Run("LSCS_OnLoadedPlayerData")
+        end
+    end)
+
+    net.Receive("LSCS_SendAllSkillTreeNamesToClient", function()
+        local skilltreeNames = net.ReadTable()
+        LSCS_SKILLTREE.TreeNames = skilltreeNames
+        treesLoaded = true
+        if dataLoaded and treesLoaded then
+            hook.Run("LSCS_OnLoadedPlayerData")
+        end
+    end)
+
+    LSCS_SKILLSYSTEM:getDataOnClient()
+    LSCS_SKILLSYSTEM:GetAllSkillTreeNames()
+end
+
+
 function LSCS_SKILLSTATION:CreatePanel()
+    self:LoadPData()
+
     local SW = ScrW()
     local SH = ScrH()
 
@@ -65,18 +96,20 @@ function LSCS_SKILLSTATION:CreatePanel()
     self.Panel:ShowCloseButton(false)
 
     self.Panel.Paint = function(self,w,h)
-        draw.RoundedBox(self:GetWide() * 0.015, 0, 0, w, h, LSCS_SKILLSTATION.Colour.BG)
+         draw.RoundedBox(self:GetWide() * 0.015, 0, 0, w, h, LSCS_SKILLSTATION.Colour.BG)
         surface.SetDrawColor(255, 255, 255)
     end
 
-    self.HeaderPanel = self:CreateHeader()
-    self.PInfoBodyPanel = self:CreatePInfoPanel()
+    hook.Add("LSCS_OnLoadedPlayerData", "LoadPlayerDataForUI", function()
+        self.HeaderPanel = self:CreateHeader()
+        self.PInfoBodyPanel = self:CreatePInfoPanel()
 
-    self.HeadingBodyVertDiv = self:CreateVertDivider(self.HeaderPanel)
-    self.BodySkillTreeVertDiv = self:CreateVertDivider(self.PInfoBodyPanel)
+        self.HeadingBodyVertDiv = self:CreateVertDivider(self.HeaderPanel)
+        self.BodySkillTreeVertDiv = self:CreateVertDivider(self.PInfoBodyPanel)
 
-    self.SkillTreeSelectPanel = self:CreateSkillTreeSelectBar()
-    self.SkillTreePanel = self:CreateSkillTreePanel()
+        self.SkillTreeSelectPanel = self:CreateSkillTreeSelectBar()
+        self.SkillTreePanel = self:CreateSkillTreePanel()
+    end)
 end
 
 function LSCS_SKILLSTATION:CreateCloseButton(parent)
@@ -275,33 +308,47 @@ function LSCS_SKILLSTATION:CreateSkillTreeSelectBar()
         draw.RoundedBox(self:GetWide() * 0.015, 0, 0, w, h, LSCS_SKILLSTATION.Colour.BG)
     end
 
-    self.currTreeSelectButton = self:CreateTreeSelectButton(LSCS_SKILLTREE.TreeNames[1], SelectFrame) -- Initially set it to the first SkillT
+    self.currTreeSelectButton = self:CreateTreeSelectButton(LSCS_SKILLTREE.TreeNames[LSCS_SKILLSTATION.CurrSelectIndex], SelectFrame)
 
     self.leftPointer, self.rightPointer = self:CreatePointerButtons(SelectFrame)
 
-    self.leftPointer:SetPos(SelectFrame:GetWide() / 2 - self.leftPointer:GetWide() / 2 - self.currTreeSelectButton:GetWide() - self.PAD, SelectFrame:GetTall() / 2 - self.leftPointer:GetTall() / 2)
-    self.rightPointer:SetPos(SelectFrame:GetWide() / 2 - self.rightPointer:GetWide() / 2 + self.currTreeSelectButton:GetWide() + self.PAD, SelectFrame:GetTall() / 2 - self.rightPointer:GetTall() / 2)
-
+    local centerX = SelectFrame:GetWide() / 2
+    local centerY = SelectFrame:GetTall() / 2
+    
+    -- Position leftPointer
+    self.leftPointer:SetPos(
+        centerX - self.currTreeSelectButton:GetWide() / 2 - self.leftPointer:GetWide() - self.PAD,
+        centerY - self.leftPointer:GetTall() / 2
+    )
+    
+    -- Position rightPointer
+    self.rightPointer:SetPos(
+        centerX + self.currTreeSelectButton:GetWide() / 2 + self.PAD,
+        centerY - self.rightPointer:GetTall() / 2
+    )
+    
+    self.SkillTreeSelectPanel = SelectFrame
     return SelectFrame
 end
 
 function LSCS_SKILLSTATION:CreateTreeSelectButton(TreeNames, parent)
     local treeSelectButton = vgui.Create("DButton", parent)
-    local size = parent:GetTall() * 0.75
-    treeSelectButton:SetSize(size, size)
+    local sizeW = parent:GetWide() * 0.25
+    local sizeH = parent:GetTall() * 0.65
+    treeSelectButton:SetSize(sizeW, sizeH)
     treeSelectButton:SetText("")
     treeSelectButton:SetPos(parent:GetWide() / 2 - treeSelectButton:GetWide() / 2, parent:GetTall() / 2 - treeSelectButton:GetTall() / 2)
     treeSelectButton.Paint = function(self, w, h)
         surface.SetDrawColor(LSCS_SKILLSTATION.Colour.HL)
         surface.DrawRect(0,0,w,h)
         surface.SetDrawColor(LSCS_SKILLSTATION.Colour.Text)
-        surface.DrawOutlinedRect(0 , 0, w, w, 2 )
+        surface.DrawOutlinedRect(0 , 0, w, h, 1 )
 
         surface.SetFont("sgb25")
         surface.SetTextColor(LSCS_SKILLSTATION.Colour.Text)
-        local width, height = surface.GetTextSize(TreeNames[1])
+        local width, height = surface.GetTextSize(TreeNames)
         surface.SetTextPos(w / 2 - width / 2, h / 2 - height / 2) 
-        surface.DrawText(TreeNames[1])
+        surface.DrawText(TreeNames)
     end
 
     return treeSelectButton
@@ -343,6 +390,34 @@ function LSCS_SKILLSTATION:CreatePointerButtons(parent)
         surface.DrawText(">")
     end
 
+    leftPointButton.DoClick = function()
+        if LSCS_SKILLSTATION.CurrSelectIndex <= 1 then return end
+
+        LSCS_SKILLSTATION.CurrSelectIndex = LSCS_SKILLSTATION.CurrSelectIndex - 1
+        self.SkillFrame:Remove()
+        self.SkillFrame = nil
+        self:CreateSkillTreePanel()
+
+        self.SkillTreeSelectPanel:Remove()
+        self:CreateSkillTreeSelectBar()
+
+        print(LSCS_SKILLSTATION.CurrSelectIndex)
+    end
+
+    rightPointButton.DoClick = function()
+        if LSCS_SKILLSTATION.CurrSelectIndex >= #LSCS_SKILLTREE.TreeNames then return end
+
+        LSCS_SKILLSTATION.CurrSelectIndex = LSCS_SKILLSTATION.CurrSelectIndex + 1
+        self.SkillFrame:Remove()
+        self.SkillFrame = nil
+        self:CreateSkillTreePanel()
+
+        self.SkillTreeSelectPanel:Remove()
+        self:CreateSkillTreeSelectBar()
+
+        print(LSCS_SKILLSTATION.CurrSelectIndex)
+    end
+
     return leftPointButton, rightPointButton
 end
 
@@ -358,7 +433,9 @@ function LSCS_SKILLSTATION:CreateSkillTreePanel()
 
     local Throbber = self:CreateThrobber(SkillFrame)
 
-    LSCS_SKILLSYSTEM:GetSelectedSkillTree(LSCS_SKILLTREE.TreeNames[1])
+    LSCS_SKILLSYSTEM:GetSelectedSkillTree(LSCS_SKILLTREE.TreeNames[LSCS_SKILLSTATION.CurrSelectIndex])
+
+    self.SkillFrame = SkillFrame
 
     hook.Add("LSCS_SelectedSkillTreeDataReady", "UpdateSelectedSkillTree", function()
         Throbber:Remove()
@@ -371,9 +448,10 @@ function LSCS_SKILLSTATION:CreateSkillTreePanel()
         local spacingY = SkillFrame:GetTall() / 1.5
 
         buildTree(treeData)
-        PrintTable(treeData)
-        self:BuildTree(treeData.Nodes["Fireball"], self.Canvas, startX, startY, 1, spacingX, spacingY)
+        self:BuildTree(treeData.Nodes[treeData.Roots[1].Name], self.Canvas, startX, startY, 1, spacingX, spacingY)
     end)
+
+    self.SkillFrame = SkillFrame
 
     return SkillFrame
 end
@@ -425,8 +503,18 @@ function LSCS_SKILLSTATION:CreateThrobber(parent)
     return Throbber
 end
 
+local function hasAllPrereq(currTree,Prerequisites)
+    if #Prerequisites == 0 then return true end
+
+    for _, prereq in pairs(Prerequisites) do
+        print("prereq = "..prereq)
+        if not LocalPlayer().SkillSystem.Nodes[currTree][prereq] then return false end
+    end
+
+    return true
+end
+
 function LSCS_SKILLSTATION:CreateNode(nodeData, parent)
-    PrintTable(nodeData)
     local node = vgui.Create("DButton", parent)
     local size = self.PAD * 5
     node:SetSize(size,size)
@@ -437,8 +525,56 @@ function LSCS_SKILLSTATION:CreateNode(nodeData, parent)
         surface.SetMaterial(Material(nodeData.Icon))
         surface.DrawTexturedRect(0,0,w,h)
         surface.DrawOutlinedRect(0 , 0, w, w, 1 )
+    end
 
-        --draw.DrawText(nodeData.Name, "sgb10", self:GetWide() / 2, self:GetTall() / 2, LSCS_SKILLSTATION.Colour.Text, TEXT_ALIGN_CENTER)
+    local hoverPanel = nil
+
+    node.OnCursorEntered = function(self)
+        if not IsValid(hoverPanel) then
+            hoverPanel = LSCS_SKILLSTATION:CreateNodeInfoPanel(nodeData, self:GetParent())
+            hoverPanel:SetPos(self:GetX() + self:GetWide() / 2 - hoverPanel:GetWide() / 2, self:GetY() - hoverPanel:GetTall() * 1.2)
+        end
+    end
+
+    node.OnCursorExited = function(self)
+        if (IsValid(hoverPanel)) then 
+            hoverPanel:Remove()
+            hoverPanel = nil 
+        end
+    end
+
+    node.nodeData = nodeData
+
+    node.DoClick = function()
+        local currTree = function() 
+            return LSCS_SKILLTREE.TreeNames[LSCS_SKILLSTATION.CurrSelectIndex]
+        end
+
+        local currSTNodes = LocalPlayer().SkillSystem.Nodes[currTree()] or {}
+
+        if(node.nodeData.Cost > LocalPlayer().SkillSystem.SkillPoints) then
+            surface.PlaySound("common/wpn_denyselect.wav")
+            return
+        end
+
+        if(currSTNodes[node.nodeData.Name]) then -- if owned
+            surface.PlaySound("common/wpn_denyselect.wav")
+            return
+        end
+
+        if (not hasAllPrereq(currTree(), node.nodeData.Prerequisites)) then
+            surface.PlaySound("common/wpn_denyselect.wav")
+            return
+        end
+
+        net.Start("LSCS_UnlockNodeFromSkillMenu")
+            net.WriteString(currTree())
+            net.WriteString(node.nodeData.Name)
+            net.WriteUInt(node.nodeData.Cost, 8)
+        net.SendToServer()
+
+        surface.PlaySound("common/wpn_select.wav")
+        self:ReloadPanel()
     end
 
     return node
@@ -467,7 +603,7 @@ function LSCS_SKILLSTATION:_BuildTree(nodeData, parent, x, y, level, spacingX, s
         local childY = childYStart + ((i - 1) * childSpacing)
 
         self:_BuildTree(childData, parent, posX, childY, level + 1, spacingX, spacingY, lineData)
-        local currLine = {{posX + node:GetWide(), y + node:GetTall() / 2}, {posX + (level * spacingX) + node:GetWide() * 1.39, childY + node:GetTall() / 2}} -- weird offsets to get line correct, need to look at
+        local currLine = {{posX + node:GetWide(), y + node:GetTall() / 2}, {posX + (level * spacingX) + node:GetWide() * 1.4, childY + node:GetTall() / 2}} -- weird offsets to get line correct, need to look at
         table.insert(lineData, currLine)
     end
 
@@ -477,12 +613,58 @@ end
 function LSCS_SKILLSTATION:BuildTree(nodeData, parent, x, y, level, spacingX, spacingY)
     local lineData = {}
     self:_BuildTree(nodeData, parent, x, y, level, spacingX, spacingY, lineData)
-    PrintTable(lineData)
-
     parent.PaintOver = function(self, x, y)
         surface.SetDrawColor(255,255,255)
         for k, currLine in pairs(lineData) do
             surface.DrawLine(currLine[1][1], currLine[1][2], currLine[2][1], currLine[2][2])
         end
     end 
+end
+
+function LSCS_SKILLSTATION:CreateNodeInfoPanel(nodeData, parent)
+    local infoPanel = vgui.Create("DPanel", parent)
+    infoPanel:SetDrawOnTop(true)
+    infoPanel.Paint = function(self, w, h)
+        surface.SetDrawColor(LSCS_SKILLSTATION.Colour.HL)
+        surface.DrawRect(0, 0, w, h)
+        surface.SetDrawColor(LSCS_SKILLSTATION.Colour.Text)
+        surface.DrawOutlinedRect(0, 0, w, h, 1)
+    end
+
+    local nameLabel = vgui.Create("DLabel", infoPanel)
+    nameLabel:SetFont("sgb27")
+    nameLabel:SetText(nodeData["Name"] or "Unknown")
+    nameLabel:SizeToContents()
+    nameLabel:SetTextColor(LSCS_SKILLSTATION.Colour.Text)
+    nameLabel:SetPos(self.PAD,self.PAD)
+
+    local descriptionLabel = vgui.Create("DLabel", infoPanel)
+    descriptionLabel:SetFont("sgl20")
+    descriptionLabel:SetText(nodeData["Description"] or "No description available")
+    descriptionLabel:SizeToContents()
+    descriptionLabel:SetTextColor(LSCS_SKILLSTATION.Colour.Text)
+    descriptionLabel:SetPos(self.PAD, nameLabel:GetY() + nameLabel:GetTall() + self.PAD)
+
+    local costLabel = vgui.Create("DLabel", infoPanel)
+    costLabel:SetFont("sgr20")
+    costLabel:SetText("Cost: " .. (nodeData["Cost"] or "0"))
+    costLabel:SizeToContents()
+    costLabel:SetTextColor(LSCS_SKILLSTATION.Colour.Text)
+    costLabel:SetPos(self.PAD, descriptionLabel:GetY() + descriptionLabel:GetTall() + self.PAD)
+
+    local totalHeight = costLabel:GetY() + costLabel:GetTall() + self.PAD
+    local totalWidth = math.max(nameLabel:GetWide(), descriptionLabel:GetWide(), costLabel:GetWide()) + self.PAD * 2
+    infoPanel:SetSize(totalWidth, totalHeight)
+
+    return infoPanel
+end
+
+function LSCS_SKILLSTATION:ReloadPanel()
+    self.Panel:Close()
+    self:CreatePanel()
+end
+
+function SpawnLevelUpNotification(level, time)
+    notification.AddLegacy("You have a leveled up to level "..level, NOTIFY_GENERIC, time)
+    surface.PlaySound("buttons/button15.wav")
 end

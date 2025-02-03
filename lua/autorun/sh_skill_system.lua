@@ -19,14 +19,18 @@ if CLIENT then -- Font init
             font = "Space Grotesk Bold",
             size = i,
         })
-        surface.CreateFont("sgl"..i, {
+        surface.CreateFont("sgr"..i, {
             font = "Space Grotesk Light",
             size = i,
         })
-        surface.CreateFont("sgr"..i, {
+        surface.CreateFont("sgl"..i, {
             font = "Space Grotesk Regular",
             size = i,
         })
     end   
 end 
+
+SKILLPOINT_BIT_COUNT = 8 -- 255
+LEVEL_BIT_COUNT = 7 -- 127
+COOLDOWN_BIT_COUNT = 4 -- 15
 
