@@ -70,3 +70,38 @@ hook.Add( "PlayerDeath", "LSCS_GivePlayerXPonPlayerKill", function( victim, infl
     end
 end )
 
+hook.Add("PlayerSpawn", "LSCS_ApplyOwnedNodes", function(ply)
+    timer.Simple(0, function() -- 0 second timer needed to avoid overwriting
+        local skillSystem = ply.SkillSystem
+        if not skillSystem then return end
+
+        for tree, nodes in pairs(skillSystem.Nodes) do
+            local skillTree = LSCS_SKILLSYSTEM.SkillTrees[tree]
+            if not skillTree then continue end
+            if not skillTree.JobAccess[ply:Team()] then continue end
+
+            local treeNodes = skillTree.Nodes
+            if not treeNodes then continue end
+
+            for nodeName, nodeData in pairs(treeNodes) do
+                if nodes[nodeName] then
+                    local nodeType = getmetatable(nodeData)
+
+                    if nodeType == LSCS_BUFFNODE then
+                        nodeData.ActionFunction(ply)
+                    end
+
+                    if nodeType == LSCS_STANCE then
+                        ply:lscsAddInventory(nodeData.Entity, true)
+                    end
+
+                    if nodeType == LSCS_SKILL then
+                        ply:lscsAddInventory(nodeData.Entity, true)
+                    end
+                end
+            end
+        end
+    end)
+end)
+
+

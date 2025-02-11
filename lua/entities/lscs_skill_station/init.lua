@@ -5,7 +5,7 @@ include("entities/lscs_skill_station/shared.lua")
 util.AddNetworkString("LSCS_SKILLSTATION_OpenUI")
 
 function ENT:Initialize()
-    self:SetModel("models/props_c17/Lockers001a.mdl")
+    self:SetModel("models/lscs/holocron.mdl")
     self:PhysicsInit(SOLID_VPHYSICS)
     self:SetMoveType(MOVETYPE_VPHYSICS)
     self:SetSolid(SOLID_VPHYSICS)
@@ -23,3 +23,5 @@ function ENT:Use(activator, caller)
         net.Send(caller)
     end
 end
+
+

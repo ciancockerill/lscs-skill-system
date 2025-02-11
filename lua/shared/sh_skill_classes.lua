@@ -81,7 +81,8 @@ function LSCS_SKILLTREE:New(name)
     local obj = {
         Name = name,
         Roots = {},
-        Nodes = {}
+        Nodes = {},
+        JobAccess = {}
     }
     setmetatable(obj, LSCS_SKILLTREE)
     return obj

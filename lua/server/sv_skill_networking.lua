@@ -15,16 +15,46 @@ net.Receive("LSCS_RequestSkillDataFromServer", function(len, ply)
     net.Send(ply)
 end)
 
-net.Receive("LSCS_RequestTreeDataFromServer", function(len,ply)
+local function RemoveFunctionsFromTable(tbl) -- get rid of functions 
+    local copy = {}
+
+    for k, v in pairs(tbl) do
+        if type(v) ~= "function" then
+            if type(v) == "table" then
+                copy[k] = RemoveFunctionsFromTable(v)
+            else
+                copy[k] = v
+            end
+        end
+    end
+
+    return copy
+end
+
+net.Receive("LSCS_RequestTreeDataFromServer", function(len, ply)
     local treeRequested = net.ReadString()
-    net.Start("LSCS_SendTreeDataToClient")
-        net.WriteTable(LSCS_SKILLSYSTEM.SkillTrees[treeRequested])
-    net.Send(ply)
+    local treeData = LSCS_SKILLSYSTEM.SkillTrees[treeRequested]
+
+    if treeData then
+        local sanitizedData = RemoveFunctionsFromTable(treeData)
+
+        net.Start("LSCS_SendTreeDataToClient")
+            net.WriteTable(sanitizedData)
+        net.Send(ply)
+    end
 end)
 
 net.Receive("LSCS_RequestAllSkillTreeNamesFromServer", function(len,ply)
     local skillKeys = table.GetKeys(LSCS_SKILLSYSTEM.SkillTrees)
     if not skillKeys then return end
+
+    -- PrintTable(LSCS_SKILLSYSTEM)
+
+    for _, treeName in pairs(skillKeys) do
+        if !LSCS_SKILLSYSTEM.SkillTrees[treeName].JobAccess[ply:Team()] or table.IsEmpty(LSCS_SKILLSYSTEM.SkillTrees[treeName].JobAccess) then
+            table.RemoveByValue(skillKeys, treeName)
+        end
+    end
 
     net.Start("LSCS_SendAllSkillTreeNamesToClient")
         net.WriteTable(skillKeys)

@@ -10,6 +10,15 @@ local iceSentinel = LSCS_STANCE:New("Ice Sentinel", "A steadfast and defensive f
 local tempestRider = LSCS_STANCE:New("Tempest Rider", "An agile stance emphasizing speed and precision.", 30, "materials/lscs_skill_station/icon_defaultstance.png", "entity_storm_caller")
 local mountainBastion = LSCS_STANCE:New("Mountain Bastion", "An unyielding and powerful combat form.", 40, "materials/lscs_skill_station/icon_defaultstance.png", "entity_earth_warden")
 
+local hp = LSCS_BUFFNODE:New("HP 1", "HP", 1, "materials/lscs_skill_station/icon_defaultstance.png", function(ply)
+    ply:SetMaxHealth(ply:GetMaxHealth() + 250)
+    ply:SetHealth(ply:GetMaxHealth())
+end)
+
+local speed = LSCS_BUFFNODE:New("Speed 1", "HP", 1, "materials/lscs_skill_station/icon_defaultstance.png", function(ply)
+    ply:SetRunSpeed(ply:GetRunSpeed() + 500)
+end)
+
 glacialBarrier:AddPrerequisite("Ember Blast")
 thunderClap:AddPrerequisite("Ember Blast")
 tectonicRumble:AddPrerequisite("Thunder Clap")
@@ -17,6 +26,8 @@ infernoBlade:AddPrerequisite("Tectonic Rumble")
 iceSentinel:AddPrerequisite("Tectonic Rumble")
 tempestRider:AddPrerequisite("Tectonic Rumble")
 mountainBastion:AddPrerequisite("Tempest Rider")
+hp:AddPrerequisite("Mountain Bastion")
+speed:AddPrerequisite("HP 1")
 
 masteryTree:AddRoot(emberBlast)
 masteryTree:AddNode(glacialBarrier)
@@ -26,5 +37,12 @@ masteryTree:AddNode(infernoBlade)
 masteryTree:AddNode(iceSentinel)
 masteryTree:AddNode(tempestRider)
 masteryTree:AddNode(mountainBastion)
+masteryTree:AddNode(hp)
+masteryTree:AddNode(speed)
+
+masteryTree.JobAccess = {
+    [TEAM_JEDIKNIGHT] = true,
+    [TEAM_CITIZEN] = true
+}
 
 return masteryTree
