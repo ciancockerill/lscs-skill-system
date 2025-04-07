@@ -1,12 +1,12 @@
 include("client/cl_skill_networking.lua")
 
-LSCS_SKILLSTATION = LSCS_SKILLSTATION or {}
+LSCS_SKILLSTATION = {}
 
-function buildTree(knightTree)
+local function buildTree(knightTree)
     for nodeName, nodeData in pairs(knightTree.Nodes) do
         -- For each prerequisite of the node (which is the previous child)
         for i, prereq in ipairs(nodeData.Prerequisites) do
-            local prereqNode = knightTree.Nodes[prereq]  -- Get the prerequisite node
+            local prereqNode = knightTree.Nodes[prereq] 
             if prereqNode then
                 table.insert(prereqNode.Children, nodeData)
             end
@@ -14,7 +14,7 @@ function buildTree(knightTree)
     end
 end
 
-function printTreeRecursive(node, indent)
+local function printTreeRecursive(node, indent)
     indent = indent or ""
     print(indent .. node.Name)
     for _, child in ipairs(node.Children) do
@@ -22,7 +22,7 @@ function printTreeRecursive(node, indent)
     end
 end
 
-function printSkillTree()
+local function printSkillTree()
     for _, nodeData in pairs(LSCS_SKILLTREE.CurrentSelected.Nodes) do
         if #nodeData.Prerequisites == 0 then 
             printTreeRecursive(nodeData)
@@ -63,6 +63,7 @@ function LSCS_SKILLSTATION:LoadPData()
         local skilltreeNames = net.ReadTable()
         LSCS_SKILLTREE.TreeNames = skilltreeNames
         treesLoaded = true
+
         if dataLoaded and treesLoaded then
             hook.Run("LSCS_OnLoadedPlayerData")
         end
@@ -76,6 +77,19 @@ end
 function LSCS_SKILLSTATION:CreatePanel()
     self:LoadPData()
 
+    local blurPanel = vgui.Create("DPanel")
+    blurPanel:SetSize(ScrW(), ScrH()) 
+    blurPanel:SetPos(0, 0)
+    blurPanel.Paint = function(self, w, h)
+        Derma_DrawBackgroundBlur(self, SysTime())
+        Derma_DrawBackgroundBlur(self, SysTime())
+        Derma_DrawBackgroundBlur(self, SysTime())
+
+        draw.RoundedBox(0, 0, 0, w, h, Color(0, 0, 0, 150)) 
+    end
+
+    self.BlurPanel = blurPanel
+    
     local SW = ScrW()
     local SH = ScrH()
 
@@ -87,7 +101,7 @@ function LSCS_SKILLSTATION:CreatePanel()
     self.BodyPAD = self.PAD * 20
     self.CornerRAD = self.W * 0.015
 
-    self.Panel = vgui.Create("DFrame")
+    self.Panel = vgui.Create("DFrame", blurPanel)
     self.Panel:SetPos(self.X, self.Y)
     self.Panel:SetSize(self.W, self.H)
     self.Panel:SetTitle("")
@@ -102,13 +116,26 @@ function LSCS_SKILLSTATION:CreatePanel()
 
     hook.Add("LSCS_OnLoadedPlayerData", "LoadPlayerDataForUI", function()
         self.HeaderPanel = self:CreateHeader()
+
+        if  table.IsEmpty(LocalPlayer().SkillSystem) then
+            local errorLabel = vgui.Create("DLabel", self.Panel)
+            errorLabel:SetText("You Are Not Force Sensitive!")
+            errorLabel:SetTextColor(LSCS_SABERSTATION.Colour.Text)
+            errorLabel:SetFont("sgb50")
+            errorLabel:SizeToContents()
+            errorLabel:SetPos((self.Panel:GetWide() - errorLabel:GetWide()) / 2, (self.Panel:GetTall() - errorLabel:GetTall()) / 2)
+            return
+        end
+
         self.PInfoBodyPanel = self:CreatePInfoPanel()
 
         self.HeadingBodyVertDiv = self:CreateVertDivider(self.HeaderPanel)
         self.BodySkillTreeVertDiv = self:CreateVertDivider(self.PInfoBodyPanel)
 
-        self.SkillTreeSelectPanel = self:CreateSkillTreeSelectBar()
-        self.SkillTreePanel = self:CreateSkillTreePanel()
+        if (#LSCS_SKILLTREE.TreeNames > 0) then
+            self.SkillTreeSelectPanel = self:CreateSkillTreeSelectBar()
+            self.SkillTreePanel = self:CreateSkillTreePanel()
+        end
     end)
 end
 
@@ -130,7 +157,13 @@ function LSCS_SKILLSTATION:CreateCloseButton(parent)
     end
 
     CloseButton.DoClick = function()
+        if self.CurrCanvasPosX and self.CurrCanvasPosY then
+            self.CurrCanvasPosX = nil
+            self.CurrCanvasPosY = nil
+        end
+
         self.Panel:Close()
+        self.BlurPanel:Remove()
         self.Panel = nil
     end
 
@@ -461,6 +494,12 @@ function LSCS_SKILLSTATION:CreateDraggableCanvas(parent)
     skillTreeCanvas:SetSize(self.W * 5, self.H * 5)
     skillTreeCanvas:SetPos(0, -skillTreeCanvas:GetTall() / 2 + parent:GetTall() / 2)
 
+    if self.CurrCanvasPosX and self.CurrCanvasPosY then
+        print("half: "..-skillTreeCanvas:GetTall() / 2 + parent:GetTall() / 2)
+        print("saved: "..self.CurrCanvasPosX.."  ".. self.CurrCanvasPosY)
+        skillTreeCanvas:SetPos(self.CurrCanvasPosX, self.CurrCanvasPosY)
+    end
+
     skillTreeCanvas.Paint = function(self, w, h)
         surface.SetDrawColor(LSCS_SKILLSTATION.Colour.BG)
         surface.DrawRect(0, 0, w, h)
@@ -508,15 +547,29 @@ local function hasAllPrereq(currTree,Prerequisites)
 
     for _, prereq in pairs(Prerequisites) do
         print("prereq = "..prereq)
-        if not LocalPlayer().SkillSystem.Nodes[currTree][prereq] then return false end
+
+        if not LocalPlayer().SkillSystem.Nodes[currTree] then
+            return false 
+        end
+
+        if not LocalPlayer().SkillSystem.Nodes[currTree][prereq] then
+            return false 
+        end
+
     end
 
     return true
 end
 
 function LSCS_SKILLSTATION:CreateNode(nodeData, parent)
+    local currTree = function() 
+        return LSCS_SKILLTREE.TreeNames[LSCS_SKILLSTATION.CurrSelectIndex]
+    end
+
+    local currSTNodes = LocalPlayer().SkillSystem.Nodes[currTree()] or {}
+
     local node = vgui.Create("DButton", parent)
-    local size = self.PAD * 5
+    local size = self.PAD * 6.5
     node:SetSize(size,size)
     node:SetText("")
     
@@ -524,7 +577,12 @@ function LSCS_SKILLSTATION:CreateNode(nodeData, parent)
         surface.SetDrawColor(LSCS_SKILLSTATION.Colour.Text)
         surface.SetMaterial(Material(nodeData.Icon))
         surface.DrawTexturedRect(0,0,w,h)
-        surface.DrawOutlinedRect(0 , 0, w, w, 1 )
+        if not currSTNodes[nodeData.Name] then
+            surface.SetDrawColor(LSCS_SKILLSTATION.Colour.Text)
+        else 
+            surface.SetDrawColor(Color(0,255,0))
+        end
+        surface.DrawOutlinedRect(0 , 0, w, w, 2.5 )
     end
 
     local hoverPanel = nil
@@ -546,12 +604,6 @@ function LSCS_SKILLSTATION:CreateNode(nodeData, parent)
     node.nodeData = nodeData
 
     node.DoClick = function()
-        local currTree = function() 
-            return LSCS_SKILLTREE.TreeNames[LSCS_SKILLSTATION.CurrSelectIndex]
-        end
-
-        local currSTNodes = LocalPlayer().SkillSystem.Nodes[currTree()] or {}
-
         if(node.nodeData.Cost > LocalPlayer().SkillSystem.SkillPoints) then
             surface.PlaySound("common/wpn_denyselect.wav")
             return
@@ -603,7 +655,7 @@ function LSCS_SKILLSTATION:_BuildTree(nodeData, parent, x, y, level, spacingX, s
         local childY = childYStart + ((i - 1) * childSpacing)
 
         self:_BuildTree(childData, parent, posX, childY, level + 1, spacingX, spacingY, lineData)
-        local currLine = {{posX + node:GetWide(), y + node:GetTall() / 2}, {posX + (level * spacingX) + node:GetWide() * 1.4, childY + node:GetTall() / 2}} -- weird offsets to get line correct, need to look at
+        local currLine = {{posX + node:GetWide(), y + node:GetTall() / 2}, {posX + (level * spacingX) + node:GetWide() * 1.1, childY + node:GetTall() / 2}} -- weird offsets to get line correct, need to look at
         table.insert(lineData, currLine)
     end
 
@@ -660,7 +712,15 @@ function LSCS_SKILLSTATION:CreateNodeInfoPanel(nodeData, parent)
 end
 
 function LSCS_SKILLSTATION:ReloadPanel()
+    if self.Canvas then 
+        self.CurrCanvasPosX = self.Canvas:GetX()
+        self.CurrCanvasPosY = self.Canvas:GetY()
+    end
+
     self.Panel:Close()
+    self.BlurPanel:Remove()
+    self.Panel = nil  
+    
     self:CreatePanel()
 end
 
@@ -668,3 +728,4 @@ function SpawnLevelUpNotification(level, time)
     notification.AddLegacy("You have a leveled up to level "..level, NOTIFY_GENERIC, time)
     surface.PlaySound("buttons/button15.wav")
 end
+

@@ -14,7 +14,18 @@ function LSCS_SKILLSYSTEM:New(ply)
         XP = 0,
         Level = 1,
         SkillPoints = 0,
-        Nodes = {}
+        Nodes = {},
+        Inventory = {},
+        CurrEquipped = {
+            ["RH"] = {
+                ["Crystal"] = nil,
+                ["Hilt"] = nil
+            },
+            ["LH"] = {
+                ["Crystal"] = nil,
+                ["Hilt"] = nil
+            }
+        }
     }
     setmetatable(obj, LSCS_SKILLSYSTEM)
     return obj
@@ -22,6 +33,45 @@ end
 
 function LSCS_SKILLSYSTEM:GetXPToNextLevel(level)
     return math.floor(self.NODE_XP * (level ^ self.XP_MULT))
+end
+
+function LSCS_IsPlayerJobAllowed(ply, jobTable)
+    if not ply or not IsValid(ply) then return false end
+
+    local job = ply:getDarkRPVar("job")
+    return jobTable[job]
+end
+
+LSCS_SABERITEM = {}
+LSCS_SABERITEM.__index = LSCS_SABERITEM
+
+function LSCS_SABERITEM:New(entity)
+    local obj = {
+        Name = entity.PrintName,
+        Entity = entity
+    }
+    setmetatable(obj, LSCS_SABERITEM)
+    return obj
+end
+
+LSCS_HILT = setmetatable({}, { __index = LSCS_SABERITEM })
+LSCS_HILT.__index = LSCS_HILT
+
+function LSCS_HILT:New(entity)
+    local obj = LSCS_SABERITEM:New(entity)
+
+    setmetatable(obj, LSCS_HILT)
+    return obj
+end
+
+LSCS_CRYSTAL = setmetatable({}, { __index = LSCS_SABERITEM })
+LSCS_CRYSTAL.__index = LSCS_CRYSTAL
+
+function LSCS_CRYSTAL:New(entity)
+    local obj = LSCS_SABERITEM:New(entity)
+
+    setmetatable(obj, LSCS_CRYSTAL)
+    return obj
 end
 
 LSCS_NODE = {}
@@ -74,6 +124,16 @@ function LSCS_BUFFNODE:New(name, description, cost, icon, actionFunction)
     return obj
 end
 
+LSCS_PERMISSIONNODE = setmetatable({}, { __index = LSCS_NODE })
+LSCS_PERMISSIONNODE.__index = LSCS_PERMISSIONNODE
+
+function LSCS_PERMISSIONNODE:New(name, description, cost, icon)
+    local obj = LSCS_NODE:New(name, description, cost, icon, nil)
+    setmetatable(obj, LSCS_PERMISSIONNODE)
+    return obj
+end
+
+
 LSCS_SKILLTREE = {}
 LSCS_SKILLTREE.__index = LSCS_SKILLTREE
 
@@ -95,4 +155,16 @@ end
 function LSCS_SKILLTREE:AddRoot(node)
     table.insert(self.Roots, node)
     self.Nodes[node.Name] = node
+end
+
+function LSCS_SKILLSYSTEM:GetCrystalDataFromClass(classname)
+    local name = string.match(classname, "^item_crystal_(.+)$")
+
+    return name, LSCS.Blade[name]
+end
+
+function LSCS_SKILLSYSTEM:GetHiltDataFromClass(classname)
+    local name = string.match(classname, "^item_saberhilt_(.+)$")
+
+    return name, LSCS.Hilt[name]
 end

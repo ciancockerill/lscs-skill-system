@@ -3,14 +3,20 @@ include("shared/sh_skill_classes.lua")
 if SERVER then
     AddCSLuaFile("client/cl_skill_networking.lua")
     AddCSLuaFile("client/cl_skill_ui.lua")
+    AddCSLuaFile("client/cl_lscs_adminmenu.lua")
+    AddCSLuaFile("client/cl_sabercrafting_ui.lua")
     AddCSLuaFile("shared/sh_skill_classes.lua")
 
+    include("lscs_skillsystem_config.lua")
     include("server/sv_skill_data.lua")
     include("server/sv_skill_system.lua")
     include("server/sv_skill_networking.lua")
 else
     include("client/cl_skill_networking.lua")
     include("client/cl_skill_ui.lua")
+    include("client/cl_lscs_adminmenu.lua")
+    include("client/cl_sabercrafting_ui.lua")
+
 end
 
 if CLIENT then -- Font init

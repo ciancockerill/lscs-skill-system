@@ -26,3 +26,4 @@ net.Receive("LSCS_SendLevelUpNotificationToClient", function(ply, len)
 
     SpawnLevelUpNotification(level, time)
 end)
+

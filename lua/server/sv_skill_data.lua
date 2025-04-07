@@ -2,10 +2,11 @@ local SAVEDATA_DIR = "lscs-playerdata"
 
 LSCS_SKILLSYSTEM.SkillTrees = {}
 
-hook.Add("InitPostEntity", "CheckDirExists", function()
+hook.Add("InitPostEntity", "LSCS_CheckDirExists", function()
     if not file.IsDir(SAVEDATA_DIR, "DATA") then
         file.CreateDir(SAVEDATA_DIR)
     end
+
     LSCS_SKILLTREE.LoadSkillTreesFromFile()
 end)
 
@@ -17,16 +18,16 @@ end)
 function LSCS_SKILLSYSTEM:SavePlayerData()
     local fileName = SAVEDATA_DIR.."/"..self.Player:SteamID64()..".json"
 
-    local data = {
-        Level = self.Level or 1,
-        XP = self.XP or 0,
-        SkillPoints = self.SkillPoints or 0,
-        Nodes = self.Nodes or {}
-    }
+    local data = {}
+
+    for key, value in pairs(self) do
+        if type(value) ~= "function" then
+            data[key] = value
+        end
+    end
 
     file.Write(fileName, util.TableToJSON(data))
-    print(fileName)
-    print("Saved Data: ".. self.Player:Nick())
+    print("Saved Data: " .. self.Player:Nick())
 end
 
 function LSCS_SKILLSYSTEM:LoadPlayerData(ply)
@@ -36,10 +37,21 @@ function LSCS_SKILLSYSTEM:LoadPlayerData(ply)
     if file.Exists(fileName, "DATA") then
         local data = util.JSONToTable(file.Read(fileName, "DATA"))
         
-        skillSystem.Level = data.Level 
-        skillSystem.XP = data.XP
-        skillSystem.SkillPoints = data.SkillPoints
-        skillSystem.Nodes = data.Nodes
+        skillSystem.Level = data.Level or 1
+        skillSystem.XP = data.XP or 0
+        skillSystem.SkillPoints = data.SkillPoints or 0
+        skillSystem.Nodes = data.Nodes or {}
+        skillSystem.Inventory = data.Inventory or {}
+        skillSystem.CurrEquipped = data.CurrEquipped or {
+            ["RH"] = {
+                ["Crystal"] = nil,
+                ["Hilt"] = nil
+            },
+            ["LH"] = {
+                ["Crystal"] = nil,
+                ["Hilt"] = nil
+            }
+        }
         
         ply.SkillSystem = skillSystem
         print("Loaded Data: ".. ply:Nick())
